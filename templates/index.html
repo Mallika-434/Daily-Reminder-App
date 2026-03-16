@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1e1e2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>RoutineAI</title>
+  <style>
+    :root {
+      --bg:        #1e1e2e;
+      --card:      #2a2a3e;
+      --card-dim:  #1c1c2c;
+      --border:    rgba(255,255,255,0.06);
+      --accent:    #7c3aed;
+      --hi:        #a78bfa;
+      --active-bg: #3d1f8a;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --dim:       #3d4a5e;
+      --green:     #22c55e;
+      --yellow:    #f59e0b;
+      --red:       #ef4444;
+      --blue:      #3b82f6;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh; padding-bottom: 100px;
+    }
+
+    /* ── Alarm banner ── */
+    #alarm-banner {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+      background: linear-gradient(135deg, #6d28d9, #7c3aed);
+      color: #fff; padding: 14px 18px;
+      display: none; align-items: center; gap: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    #alarm-banner.on { display: flex; }
+    #alarm-title { flex: 1; font-size: 15px; font-weight: 700; }
+    .alarm-snooze, .alarm-dismiss {
+      border: none; border-radius: 8px; padding: 8px 12px;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .alarm-snooze  { background: rgba(255,255,255,.15); color: #fff; }
+    .alarm-dismiss { background: rgba(255,255,255,.25); color: #fff; }
+
+    /* ── Header ── */
+    .header {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 14px 18px; position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header h1 { font-size: 18px; font-weight: 800; color: var(--hi); }
+    .header-date { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .streak-pill {
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      color: #fff; font-size: 13px; font-weight: 700;
+      padding: 6px 12px; border-radius: 999px; white-space: nowrap;
+    }
+
+    /* ── Progress ── */
+    .progress-wrap { padding: 12px 16px 6px; }
+    .progress-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .progress-bar  { height: 6px; background: var(--card); border-radius: 999px; overflow: hidden; }
+    .progress-fill {
+      height: 100%; border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--hi));
+      transition: width .6s ease;
+    }
+
+    /* ── AI Bubble ── */
+    .ai-bubble {
+      margin: 4px 16px 8px;
+      background: linear-gradient(135deg, rgba(124,58,237,.12), rgba(167,139,250,.08));
+      border: 1px solid rgba(124,58,237,.3); border-radius: 14px;
+      padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start;
+    }
+    .ai-icon {
+      width: 28px; height: 28px; background: var(--accent);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+    .ai-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--hi); margin-bottom: 3px; }
+    .ai-text  { font-size: 13px; color: var(--text); line-height: 1.5; }
+
+    /* ── Section header ── */
+    .section-head {
+      padding: 4px 16px 8px; font-size: 11px; font-weight: 700;
+      letter-spacing: .8px; text-transform: uppercase; color: var(--muted);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .btn-add {
+      background: var(--accent); color: #fff; border: none;
+      border-radius: 8px; padding: 5px 11px; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .btn-summary {
+      background: rgba(124,58,237,.15); color: var(--hi); border: 1px solid rgba(124,58,237,.3);
+      border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+
+    /* ── Task list ── */
+    .task-list { display: flex; flex-direction: column; gap: 7px; padding: 0 16px; }
+
+    /* ── Task card ── */
+    .task-card {
+      background: var(--card); border-radius: 14px; padding: 14px;
+      border-left: 3px solid transparent; position: relative;
+      transition: border-color .2s, background .2s;
+    }
+    .task-card.s-pending   { border-left-color: var(--muted); }
+    .task-card.s-active    { border-left-color: var(--blue);  background: rgba(59,130,246,.07); }
+    .task-card.s-snoozed   { border-left-color: var(--yellow);}
+    .task-card.s-completed { border-left-color: var(--green); }
+    .task-card.s-missed    { border-left-color: var(--red);   opacity: .6; }
+
+    .card-top  { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+    .task-name { font-size: 15px; font-weight: 700; flex: 1; }
+    .status-badge {
+      font-size: 10px; font-weight: 700; padding: 3px 8px;
+      border-radius: 999px; text-transform: uppercase; letter-spacing: .5px; flex-shrink: 0;
+    }
+    .b-pending   { background: rgba(100,116,139,.2); color: var(--muted); }
+    .b-active    { background: rgba(59,130,246,.2);  color: var(--blue);  }
+    .b-snoozed   { background: rgba(245,158,11,.2);  color: var(--yellow);}
+    .b-completed { background: rgba(34,197,94,.2);   color: var(--green); }
+    .b-missed    { background: rgba(239,68,68,.2);   color: var(--red);   }
+
+    .task-time { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .task-actions { display: flex; gap: 6px; }
+    .btn-snooze, .btn-complete {
+      flex: 1; padding: 9px 6px; border: none; border-radius: 9px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .btn-snooze   { background: rgba(245,158,11,.13); color: var(--yellow); }
+    .btn-complete { background: rgba(34,197,94,.13);  color: var(--green);  }
+    .btn-edit {
+      background: rgba(100,116,139,.13); color: var(--muted);
+      border: none; border-radius: 9px; padding: 9px 12px;
+      font-size: 13px; cursor: pointer;
+    }
+    .snooze-info { font-size: 11px; color: var(--yellow); margin-top: 6px; }
+    .feedback-row {
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .ai-score   { background: var(--accent); color: #fff; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px; flex-shrink: 0; }
+    .ai-fb-text { font-size: 12px; color: var(--muted); flex: 1; line-height: 1.4; }
+    .photo-thumb { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; border: 2px solid var(--green); }
+
+    /* ── Insights / bottom link ── */
+    .bottom-links { display: flex; justify-content: center; gap: 16px; padding: 14px 16px 6px; }
+    .link-btn {
+      color: var(--hi); font-size: 12px; font-weight: 600; background: none;
+      border: none; cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+    }
+
+    /* ── Modals ── */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 300;
+      display: none; align-items: flex-end; justify-content: center;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--card); border-radius: 20px 20px 0 0;
+      padding: 20px 20px 36px; width: 100%; max-width: 480px;
+      max-height: 92vh; overflow-y: auto;
+    }
+    .handle { width: 40px; height: 4px; background: rgba(255,255,255,.1); border-radius: 2px; margin: 0 auto 18px; }
+    .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+    .form-group { margin-bottom: 13px; }
+    .form-group label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+    .form-group input {
+      width: 100%; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 10px; padding: 11px 13px; color: var(--text); font-size: 15px;
+    }
+    .form-group input:focus { outline: none; border-color: var(--accent); }
+    .btn-primary {
+      width: 100%; padding: 14px; background: var(--accent); color: #fff;
+      border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
+      cursor: pointer; margin-top: 4px;
+    }
+    .btn-secondary {
+      width: 100%; padding: 12px; background: rgba(100,116,139,.15); color: var(--muted);
+      border: none; border-radius: 12px; font-size: 14px; font-weight: 600;
+      cursor: pointer; margin-top: 8px;
+    }
+    .btn-danger {
+      width: 100%; padding: 12px; background: rgba(239,68,68,.15); color: var(--red);
+      border: none; border-radius: 12px; font-size: 14px; font-weight: 600;
+      cursor: pointer; margin-top: 8px;
+    }
+
+    /* Photo upload area */
+    .photo-area {
+      border: 2px dashed rgba(124,58,237,.4); border-radius: 12px;
+      padding: 28px; text-align: center; cursor: pointer; margin-bottom: 14px;
+    }
+    .photo-area:hover { border-color: var(--accent); }
+    #photo-preview { width: 100%; border-radius: 10px; margin-bottom: 8px; display: none; }
+
+    /* Insight cards */
+    .insight-card {
+      background: rgba(255,255,255,.04); border-radius: 10px; padding: 12px;
+      margin-bottom: 10px;
+    }
+    .insight-meta { font-size: 10px; font-weight: 700; color: var(--hi); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 4px; }
+    .insight-body { font-size: 13px; color: var(--text); line-height: 1.5; white-space: pre-wrap; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--card); color: var(--text); padding: 12px 20px;
+      border-radius: 999px; font-size: 13px; font-weight: 600;
+      box-shadow: 0 4px 24px rgba(0,0,0,.4); transition: transform .3s; z-index: 450;
+      border: 1px solid rgba(255,255,255,.1); white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* Pulse dot */
+    .pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--blue); animation: blink 1.8s infinite; }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 40px 20px; color: var(--muted); }
+    .empty .icon { font-size: 36px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+<!-- Alarm banner -->
+<div id="alarm-banner">
+  <span style="font-size:20px">⏰</span>
+  <div id="alarm-title">Task starting!</div>
+  <button class="alarm-snooze"  onclick="alarmSnooze()">Snooze</button>
+  <button class="alarm-dismiss" onclick="alarmDismiss()">Dismiss</button>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div>
+    <h1>RoutineAI</h1>
+    <div class="header-date" id="hdr-date">—</div>
+  </div>
+  <div class="streak-pill">🔥 <span id="streak-val">0</span> day streak</div>
+</div>
+
+<!-- Progress -->
+<div class="progress-wrap">
+  <div class="progress-meta">
+    <span>Today's Progress</span>
+    <span><span id="p-done">0</span> / <span id="p-total">0</span> tasks</span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="p-fill" style="width:0%"></div></div>
+</div>
+
+<!-- AI bubble -->
+<div class="ai-bubble" id="ai-bubble" style="display:none">
+  <div class="ai-icon">🤖</div>
+  <div>
+    <div class="ai-label" id="ai-label">AI Coach</div>
+    <div class="ai-text"  id="ai-text">—</div>
+  </div>
+</div>
+
+<!-- Section header -->
+<div class="section-head">
+  Today's Schedule
+  <div style="display:flex;gap:6px">
+    <button class="btn-summary" onclick="triggerSummary()">📊 Summary</button>
+    <button class="btn-add"    onclick="openAdd()">+ Add</button>
+  </div>
+</div>
+
+<!-- Task list -->
+<div class="task-list" id="task-list">
+  <div class="empty"><div class="icon">📋</div><p>Loading schedule…</p></div>
+</div>
+
+<!-- Bottom links -->
+<div class="bottom-links">
+  <button class="link-btn" onclick="openInsights()">🧠 AI Insights History</button>
+</div>
+
+<!-- ── Complete modal ── -->
+<div class="overlay" id="modal-complete">
+  <div class="modal">
+    <div class="handle"></div>
+    <h2>📸 Complete Task</h2>
+    <p id="complete-label" style="font-size:13px;color:var(--muted);margin-bottom:14px">Upload proof photo</p>
+    <div class="photo-area" onclick="document.getElementById('photo-file').click()">
+      <img id="photo-preview" alt="preview">
+      <div id="upload-hint">
+        <div style="font-size:30px;margin-bottom:6px">📷</div>
+        <div style="font-size:13px;color:var(--muted)">Tap to take or upload a photo</div>
+      </div>
+    </div>
+    <input type="file" id="photo-file" accept="image/*" capture="environment"
+           style="display:none" onchange="previewPhoto(this)">
+    <button class="btn-primary" onclick="submitComplete()">Submit &amp; Get AI Feedback</button>
+    <button class="btn-secondary" onclick="closeModal('modal-complete')">Cancel</button>
+  </div>
+</div>
+
+<!-- ── Add / Edit task modal ── -->
+<div class="overlay" id="modal-task">
+  <div class="modal">
+    <div class="handle"></div>
+    <h2 id="task-modal-h">Add Task</h2>
+    <input type="hidden" id="edit-id">
+    <div class="form-group"><label>Task Name</label><input type="text" id="f-name" placeholder="e.g. Morning Study"></div>
+    <div class="form-group"><label>Start Time</label><input type="time" id="f-start"></div>
+    <div class="form-group"><label>End Time</label>  <input type="time" id="f-end"></div>
+    <div class="form-group"><label>Snooze (minutes)</label><input type="number" id="f-snooze" value="10" min="1" max="120"></div>
+    <button class="btn-primary"   onclick="saveTask()">Save Task</button>
+    <button class="btn-danger"    id="btn-delete" onclick="deleteTask()" style="display:none">Delete Task</button>
+    <button class="btn-secondary" onclick="closeModal('modal-task')">Cancel</button>
+  </div>
+</div>
+
+<!-- ── Insights modal ── -->
+<div class="overlay" id="modal-insights">
+  <div class="modal">
+    <div class="handle"></div>
+    <h2>🧠 AI Insights</h2>
+    <div id="insights-body" style="margin-top:8px">Loading…</div>
+    <button class="btn-secondary" onclick="closeModal('modal-insights')" style="margin-top:16px">Close</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let todayData    = null;
+let completingId = null;   // log id for complete modal
+let alarmLogId   = null;   // log id of active alarm
+let alarmTimer   = null;
+let alarmSet     = new Set();    // "start:logId:hhmm" keys already fired
+let didScroll    = false;
+let toastTimer   = null;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init() {
+  updateHeaderDate();
+  loadToday().then(() => {
+    checkAlarms();
+    setInterval(() => { loadToday(); checkAlarms(); }, 30000);
+  });
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function updateHeaderDate() {
+  document.getElementById('hdr-date').textContent =
+    new Date().toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+}
+
+// ── Load data ─────────────────────────────────────────────────────────────────
+async function loadToday() {
+  try {
+    const res  = await fetch('/api/today');
+    todayData  = await res.json();
+    renderTasks(todayData);
+    updateProgress(todayData);
+    document.getElementById('streak-val').textContent = todayData.streak;
+    updateAIBubble(todayData.ai_message);
+  } catch(e) { console.error('loadToday', e); }
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function fmt12(hhmm) {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  const ap = h >= 12 ? 'PM' : 'AM';
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ap}`;
+}
+
+function getStatus(task) {
+  if (task.status === 'completed') return 'completed';
+  if (task.status === 'missed')    return 'missed';
+  if (task.status === 'snoozed') {
+    if (task.snooze_until) {
+      const now = new Date();
+      const [sh, sm] = task.snooze_until.split(':').map(Number);
+      const snEnd = new Date(); snEnd.setHours(sh, sm, 0, 0);
+      if (now >= snEnd) return 'pending';
+    }
+    return 'snoozed';
+  }
+  const now = new Date();
+  const [sh, sm] = task.start_time.split(':').map(Number);
+  const [eh, em] = task.end_time.split(':').map(Number);
+  const start = new Date(); start.setHours(sh, sm, 0, 0);
+  const end   = new Date(); end.setHours(eh, em, 0, 0);
+  if (now >= start && now < end) return 'active';
+  return 'pending';
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+const BADGE_LABELS = {pending:'Pending', active:'Active Now', snoozed:'Snoozed', completed:'Done', missed:'Missed'};
+const BADGE_CLASS  = {pending:'b-pending', active:'b-active', snoozed:'b-snoozed', completed:'b-completed', missed:'b-missed'};
+
+function renderTasks(data) {
+  const list = document.getElementById('task-list');
+  if (!data.tasks || !data.tasks.length) {
+    list.innerHTML = '<div class="empty"><div class="icon">📋</div><p>No tasks yet. Tap "+ Add" to get started.</p></div>';
+    return;
+  }
+  list.innerHTML = data.tasks.map(t => {
+    const st = getStatus(t);
+    const canAct = !['completed','missed'].includes(st);
+    const fbRow = (t.ai_feedback && t.status === 'completed') ? `
+      <div class="feedback-row">
+        <div class="ai-score">${t.ai_score || '?'}/10</div>
+        <div class="ai-fb-text">${esc(t.ai_feedback)}</div>
+        ${t.photo_path ? `<img class="photo-thumb" src="/static/${t.photo_path}">` : ''}
+      </div>` : '';
+    const snInfo = (st === 'snoozed' && t.snooze_until)
+      ? `<div class="snooze-info">⏰ Alarm again at ${fmt12(t.snooze_until)}</div>` : '';
+    const activeDot = st === 'active' ? ' <span class="pulse"></span>' : '';
+    return `
+      <div class="task-card s-${st}" id="card-${t.id}">
+        <div class="card-top">
+          <div class="task-name">${esc(t.name)}${activeDot}</div>
+          <div class="status-badge ${BADGE_CLASS[st]}">${BADGE_LABELS[st]}</div>
+        </div>
+        <div class="task-time">${fmt12(t.start_time)} – ${fmt12(t.end_time)}</div>
+        <div class="task-actions">
+          ${canAct ? `
+            <button class="btn-snooze"   onclick="doSnooze(${t.id})">😴 ${t.snooze_minutes}m</button>
+            <button class="btn-complete" onclick="openComplete(${t.id},'${esc(t.name)}')">✅ Done</button>
+          ` : ''}
+          <button class="btn-edit" onclick="openEdit(${t.task_id})">✏️</button>
+        </div>
+        ${snInfo}${fbRow}
+      </div>`;
+  }).join('');
+
+  // Scroll active card into view once
+  if (!didScroll) {
+    const active = data.tasks.findIndex(t => getStatus(t) === 'active');
+    if (active !== -1) {
+      const el = document.getElementById(`card-${data.tasks[active].id}`);
+      if (el) { el.scrollIntoView({behavior:'smooth', block:'center'}); }
+      didScroll = true;
+    }
+  }
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function updateProgress(data) {
+  document.getElementById('p-done').textContent  = data.completed;
+  document.getElementById('p-total').textContent = data.total;
+  document.getElementById('p-fill').style.width  = data.progress + '%';
+}
+
+const AI_LABELS = {coaching:'🏋️ AI Coach', summary:'📊 Daily Summary',
+                   pattern:'🔍 Pattern Insight', feedback:'⭐ Task Feedback',
+                   reschedule:'📅 Reschedule Tip'};
+
+function updateAIBubble(msg) {
+  const el = document.getElementById('ai-bubble');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  document.getElementById('ai-label').textContent = AI_LABELS[msg.type] || 'AI Coach';
+  document.getElementById('ai-text').textContent  = msg.message;
+}
+
+// ── Alarm ─────────────────────────────────────────────────────────────────────
+function playBeeps() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.55, 1.1].forEach(delay => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'square'; osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.35, ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.45);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.46);
+    });
+  } catch(e) {}
+}
+
+function checkAlarms() {
+  if (!todayData) return;
+  const now = new Date();
+  const hhmm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  todayData.tasks.forEach(t => {
+    const st = getStatus(t);
+    if (['completed','missed'].includes(st)) return;
+
+    const startKey  = `start:${t.id}:${t.start_time}`;
+    if (!alarmSet.has(startKey) && t.start_time === hhmm) {
+      alarmSet.add(startKey);
+      triggerAlarm(t.name, t.id);
+    }
+    if (st === 'snoozed' && t.snooze_until) {
+      const snKey = `snooze:${t.id}:${t.snooze_until}`;
+      if (!alarmSet.has(snKey) && t.snooze_until === hhmm) {
+        alarmSet.add(snKey);
+        triggerAlarm(t.name, t.id);
+      }
+    }
+  });
+}
+
+function triggerAlarm(name, logId) {
+  alarmLogId = logId;
+  document.getElementById('alarm-title').textContent = `Time for: ${name}`;
+  document.getElementById('alarm-banner').classList.add('on');
+  playBeeps();
+  alarmTimer = setInterval(playBeeps, 3500);
+
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(`⏰ ${name}`, {body: 'Your task is starting now!'});
+  }
+}
+
+function alarmDismiss() {
+  document.getElementById('alarm-banner').classList.remove('on');
+  clearInterval(alarmTimer);
+  alarmLogId = null;
+}
+
+async function alarmSnooze() {
+  if (!alarmLogId) return;
+  alarmDismiss();
+  await doSnooze(alarmLogId);
+}
+
+// ── Complete task ─────────────────────────────────────────────────────────────
+function openComplete(logId, name) {
+  completingId = logId;
+  document.getElementById('complete-label').textContent = `Complete: "${name}"`;
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('upload-hint').style.display = 'block';
+  document.getElementById('photo-file').value = '';
+  openModal('modal-complete');
+}
+
+function previewPhoto(input) {
+  if (!input.files || !input.files[0]) return;
+  const url = URL.createObjectURL(input.files[0]);
+  const img  = document.getElementById('photo-preview');
+  img.src    = url;
+  img.style.display = 'block';
+  document.getElementById('upload-hint').style.display = 'none';
+}
+
+async function submitComplete() {
+  const fi = document.getElementById('photo-file');
+  if (!fi.files || !fi.files[0]) { showToast('Please take or upload a photo first'); return; }
+  const form = new FormData();
+  form.append('photo', fi.files[0]);
+  closeModal('modal-complete');
+  showToast('Submitting… Claude is reviewing your photo 🤖');
+  try {
+    const res  = await fetch(`/api/complete/${completingId}`, {method:'POST', body:form});
+    const data = await res.json();
+    showToast(data.ok ? 'Done! AI feedback will appear shortly ✨' : `Error: ${data.error}`);
+    await loadToday();
+  } catch(e) { showToast('Upload failed'); }
+}
+
+// ── Snooze ────────────────────────────────────────────────────────────────────
+async function doSnooze(logId) {
+  try {
+    const res  = await fetch(`/api/snooze/${logId}`, {method:'POST'});
+    const data = await res.json();
+    if (data.ok) { showToast(`Snoozed until ${fmt12(data.snooze_until)} 😴`); await loadToday(); }
+  } catch(e) { showToast('Snooze failed'); }
+}
+
+// ── Add / Edit task ───────────────────────────────────────────────────────────
+function openAdd() {
+  document.getElementById('task-modal-h').textContent = 'Add Task';
+  document.getElementById('edit-id').value  = '';
+  document.getElementById('f-name').value   = '';
+  document.getElementById('f-start').value  = '';
+  document.getElementById('f-end').value    = '';
+  document.getElementById('f-snooze').value = '10';
+  document.getElementById('btn-delete').style.display = 'none';
+  openModal('modal-task');
+}
+
+async function openEdit(taskId) {
+  try {
+    const tasks = await (await fetch('/api/tasks')).json();
+    const t = tasks.find(x => x.id === taskId);
+    if (!t) return;
+    document.getElementById('task-modal-h').textContent = 'Edit Task';
+    document.getElementById('edit-id').value  = t.id;
+    document.getElementById('f-name').value   = t.name;
+    document.getElementById('f-start').value  = t.start_time;
+    document.getElementById('f-end').value    = t.end_time;
+    document.getElementById('f-snooze').value = t.snooze_minutes;
+    document.getElementById('btn-delete').style.display = 'block';
+    openModal('modal-task');
+  } catch(e) { showToast('Could not load task'); }
+}
+
+async function saveTask() {
+  const id = document.getElementById('edit-id').value;
+  const body = {
+    name:           document.getElementById('f-name').value.trim(),
+    start_time:     document.getElementById('f-start').value,
+    end_time:       document.getElementById('f-end').value,
+    snooze_minutes: document.getElementById('f-snooze').value,
+  };
+  if (!body.name || !body.start_time || !body.end_time) {
+    showToast('Fill in all fields'); return;
+  }
+  try {
+    await fetch(id ? `/api/tasks/${id}` : '/api/tasks', {
+      method:  id ? 'PUT' : 'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify(body),
+    });
+    showToast(id ? 'Task updated ✓' : 'Task added ✓');
+    closeModal('modal-task');
+    didScroll = false;
+    await loadToday();
+  } catch(e) { showToast('Save failed'); }
+}
+
+async function deleteTask() {
+  const id = document.getElementById('edit-id').value;
+  if (!id || !confirm('Delete this task?')) return;
+  await fetch(`/api/tasks/${id}`, {method:'DELETE'});
+  showToast('Task deleted');
+  closeModal('modal-task');
+  await loadToday();
+}
+
+// ── Daily summary (manual trigger) ───────────────────────────────────────────
+async function triggerSummary() {
+  showToast('Generating daily summary… ⏳');
+  await fetch('/api/trigger-summary', {method:'POST'});
+  setTimeout(loadToday, 3000);
+}
+
+// ── Insights ──────────────────────────────────────────────────────────────────
+async function openInsights() {
+  openModal('modal-insights');
+  document.getElementById('insights-body').innerHTML = 'Loading…';
+  try {
+    const msgs = await (await fetch('/api/insights')).json();
+    if (!msgs.length) {
+      document.getElementById('insights-body').innerHTML =
+        '<p style="color:var(--muted);font-size:13px">No insights yet. Complete some tasks!</p>';
+      return;
+    }
+    document.getElementById('insights-body').innerHTML = msgs.map(m => `
+      <div class="insight-card">
+        <div class="insight-meta">${AI_LABELS[m.type] || m.type} &nbsp;·&nbsp; ${m.date}</div>
+        <div class="insight-body">${esc(m.message)}</div>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('insights-body').innerHTML = 'Failed to load insights.';
+  }
+}
+
+// ── Modal helpers ─────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.overlay').forEach(el =>
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); })
+);
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

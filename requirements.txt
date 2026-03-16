@@ -1,2 +1,4 @@
 flask
-plyer
+google-genai
+python-dotenv
+pillow
