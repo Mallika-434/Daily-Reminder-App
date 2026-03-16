@@ -1,0 +1,39 @@
+{
+  "schedules": {
+    "home_workout": {
+      "label": "Home Workout Day",
+      "activities": [
+        { "time": "04:00", "title": "Wake Up & Drink Lemon Ginger Water", "duration_mins": 30 },
+        { "time": "04:30", "title": "Study Course", "duration_mins": 180 },
+        { "time": "07:30", "title": "Exercise (Home Workout)", "duration_mins": 30 },
+        { "time": "08:00", "title": "Bath & Breakfast", "duration_mins": 90 },
+        { "time": "09:30", "title": "Study Course", "duration_mins": 120 },
+        { "time": "11:30", "title": "Project", "duration_mins": 120 },
+        { "time": "13:30", "title": "Lunch & Eat", "duration_mins": 120 },
+        { "time": "15:30", "title": "Walk", "duration_mins": 30 },
+        { "time": "16:00", "title": "Study Course", "duration_mins": 240 },
+        { "time": "20:00", "title": "Resume & Apply", "duration_mins": 120 },
+        { "time": "22:00", "title": "Project", "duration_mins": 60 }
+      ]
+    },
+    "gym_day": {
+      "label": "Gym Day",
+      "activities": [
+        { "time": "04:00", "title": "Wake Up & Drink Lemon Ginger Water", "duration_mins": 30 },
+        { "time": "04:30", "title": "Study Course", "duration_mins": 180 },
+        { "time": "07:30", "title": "Exercise (Gym)", "duration_mins": 120 },
+        { "time": "09:30", "title": "Bath & Breakfast", "duration_mins": 30 },
+        { "time": "10:00", "title": "Study Course", "duration_mins": 120 },
+        { "time": "12:00", "title": "Lunch & Eat", "duration_mins": 120 },
+        { "time": "14:00", "title": "Project", "duration_mins": 120 },
+        { "time": "16:00", "title": "Study Course", "duration_mins": 240 },
+        { "time": "20:00", "title": "Resume & Apply", "duration_mins": 120 },
+        { "time": "22:00", "title": "Project", "duration_mins": 60 }
+      ]
+    }
+  },
+  "project_schedule": {
+    "MRP": ["Saturday", "Sunday", "Monday"],
+    "Own Project": ["Tuesday", "Wednesday", "Thursday", "Friday"]
+  }
+}
