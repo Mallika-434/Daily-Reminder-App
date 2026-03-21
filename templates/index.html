@@ -244,6 +244,11 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
         </div>
         <div style="font-size:10px;color:var(--text3);margin-top:4px">Get free key at <span style="color:var(--pl)">aistudio.google.com</span> · Saved locally, never shared</div>
       </div>
+      <!-- Connected state -->
+      <div id="gemini-connected" style="display:none;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="font-size:12px;color:var(--green)">✅ Gemini AI connected</span>
+        <button onclick="showGeminiKeyInput()" style="background:none;border:none;color:var(--pl);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline">Change key</button>
+      </div>
 
       <div id="ai-insight-box" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px;font-size:12px;color:var(--text2);line-height:1.7;display:none;white-space:pre-wrap"></div>
       <div id="ai-insight-loading" style="display:none;text-align:center;padding:16px;font-size:12px;color:var(--pl)">🤖 Gemini is analysing your routine history...</div>
@@ -809,21 +814,29 @@ function saveGeminiKey(){
   if(!key){alert('Please enter your Gemini API key');return;}
   localStorage.setItem('rai_gemini_key',key);
   document.getElementById('gemini-key-section').style.display='none';
+  document.getElementById('gemini-connected').style.display='flex';
   document.getElementById('ai-insight-btn').style.display='block';
-  alert('API key saved! Tap "Ask Gemini" to get your insight.');
+}
+
+function showGeminiKeyInput(){
+  document.getElementById('gemini-connected').style.display='none';
+  document.getElementById('gemini-key-section').style.display='block';
+  document.getElementById('gemini-key-inp').focus();
 }
 
 function loadGeminiKey(){
   const key=localStorage.getItem('rai_gemini_key');
   if(key){
-    document.getElementById('gemini-key-section').style.display='none';
     document.getElementById('gemini-key-inp').value=key;
+    document.getElementById('gemini-key-section').style.display='none';
+    document.getElementById('gemini-connected').style.display='flex';
   }
 }
 
 async function fetchGeminiInsight(){
   const key=localStorage.getItem('rai_gemini_key');
   if(!key){
+    document.getElementById('gemini-connected').style.display='none';
     document.getElementById('gemini-key-section').style.display='block';
     return;
   }

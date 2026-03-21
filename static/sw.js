@@ -1,5 +1,5 @@
 // RoutineAI Service Worker
-const CACHE = 'routineai-v1';
+const CACHE = 'routineai-v2';
 
 // App shell — pages and assets cached on install
 const SHELL = [
