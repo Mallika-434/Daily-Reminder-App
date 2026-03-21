@@ -1,0 +1,25 @@
+{
+  "name": "RoutineAI",
+  "short_name": "RoutineAI",
+  "description": "AI-powered personal routine dashboard",
+  "theme_color": "#7c6fef",
+  "background_color": "#0f0f14",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
