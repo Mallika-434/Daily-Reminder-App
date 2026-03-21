@@ -4,11 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RoutineAI — Daily Schedule</title>
-<link rel="manifest" href="/static/manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="RoutineAI">
-<link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0f0f14;--bg2:#16161f;--bg3:#1e1e2a;--purple:#7c6fef;--pl:#a89cf7;--pd:#2a2540;--green:#3ecf8e;--gd:#1a3d2e;--amber:#f5a623;--ad:#3a2c10;--red:#f06c6c;--rd:#3a1a1a;--text:#e8e6f0;--text2:#9490a8;--text3:#5a566e;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12)}
@@ -1196,20 +1191,6 @@ loadGeminiKey();
 loadCachedInsight();
 setInterval(render,1000);
 setInterval(checkBehindSchedule,60000);
-</script>
-<button id="pwa-install-btn" style="display:none;position:fixed;bottom:20px;right:20px;z-index:999;padding:10px 18px;border-radius:12px;border:none;background:var(--purple);color:#fff;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;box-shadow:0 4px 20px rgba(124,111,239,.4)" onclick="pwaInstall()">Install App</button>
-<script>
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;const b=document.getElementById('pwa-install-btn');if(b)b.style.display='block'});
-function pwaInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(()=>{deferredPrompt=null;const b=document.getElementById('pwa-install-btn');if(b)b.style.display='none'})}}
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/sw.js').then(reg=>{
-    console.log('[SW] registered scope:',reg.scope);
-    navigator.serviceWorker.addEventListener('message',e=>{
-      if(e.data&&e.data.type==='snooze-alarm'){if(typeof alarmSnz==='function')alarmSnz(10);}
-    });
-  }).catch(e=>console.error('[SW] registration failed:',e));
-}
 </script>
 </body>
 </html>
