@@ -235,20 +235,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
       </div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Personalized AI coaching based on your real history</div>
 
-      <!-- API key input -->
-      <div id="gemini-key-section" style="margin-bottom:10px">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:5px">Enter your free Gemini API key to enable AI insights:</div>
-        <div style="display:flex;gap:6px">
-          <input id="gemini-key-inp" type="password" placeholder="AIzaSy..." style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;font-family:'DM Mono',monospace;outline:none">
-          <button onclick="saveGeminiKey()" style="padding:8px 12px;border-radius:8px;border:none;background:var(--purple);color:#fff;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer">Save</button>
-        </div>
-        <div style="font-size:10px;color:var(--text3);margin-top:4px">Get free key at <span style="color:var(--pl)">aistudio.google.com</span> · Saved locally, never shared</div>
-      </div>
-      <!-- Connected state -->
-      <div id="gemini-connected" style="display:none;align-items:center;gap:8px;margin-bottom:10px">
-        <span style="font-size:12px;color:var(--green)">✅ Gemini AI connected</span>
-        <button onclick="showGeminiKeyInput()" style="background:none;border:none;color:var(--pl);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:underline">Change key</button>
-      </div>
 
       <div id="ai-insight-box" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px;font-size:12px;color:var(--text2);line-height:1.7;display:none;white-space:pre-wrap"></div>
       <div id="ai-insight-loading" style="display:none;text-align:center;padding:16px;font-size:12px;color:var(--pl)">🤖 Gemini is analysing your routine history...</div>
@@ -809,38 +795,7 @@ function renderTrendChart(){
 }
 
 // ── Gemini AI Insight ──────────────────────────────────────────────────────
-function saveGeminiKey(){
-  const key=document.getElementById('gemini-key-inp').value.trim();
-  if(!key){alert('Please enter your Gemini API key');return;}
-  localStorage.setItem('rai_gemini_key',key);
-  document.getElementById('gemini-key-section').style.display='none';
-  document.getElementById('gemini-connected').style.display='flex';
-  document.getElementById('ai-insight-btn').style.display='block';
-}
-
-function showGeminiKeyInput(){
-  document.getElementById('gemini-connected').style.display='none';
-  document.getElementById('gemini-key-section').style.display='block';
-  document.getElementById('gemini-key-inp').focus();
-}
-
-function loadGeminiKey(){
-  const key=localStorage.getItem('rai_gemini_key');
-  if(key){
-    document.getElementById('gemini-key-inp').value=key;
-    document.getElementById('gemini-key-section').style.display='none';
-    document.getElementById('gemini-connected').style.display='flex';
-  }
-}
-
 async function fetchGeminiInsight(){
-  const key=localStorage.getItem('rai_gemini_key');
-  if(!key){
-    document.getElementById('gemini-connected').style.display='none';
-    document.getElementById('gemini-key-section').style.display='block';
-    return;
-  }
-
   const loading=document.getElementById('ai-insight-loading');
   const box=document.getElementById('ai-insight-box');
   const err=document.getElementById('ai-insight-error');
@@ -891,35 +846,24 @@ Based on this data, provide:
 
 Keep it under 150 words total. Use bullet points. Be specific with times and task names.`;
 
-  const MODELS=['gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.5-pro'];
-  let data=null, usedModel=null;
-
-  for(const model of MODELS){
-    try{
-      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          contents:[{parts:[{text:prompt}]}],
-          generationConfig:{maxOutputTokens:300,temperature:0.7}
-        })
-      });
-      data=await res.json();
-      if(!data.error){usedModel=model;break;}
-    }catch(e){}
-  }
   try{
-    if(!data||data.error){
-      err.textContent='Error: '+(data?.error?.message||'Could not connect to Gemini. Check your API key.');
+    const res=await fetch('/api/gemini',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({prompt})
+    });
+    const data=await res.json();
+    if(!res.ok||data.error){
+      err.textContent='Error: '+(data.error||'Could not reach Gemini.');
       err.style.display='block';
     } else {
-      const text=data.candidates?.[0]?.content?.parts?.[0]?.text||'No response received';
-      box.innerHTML=`<div style="font-size:10px;color:var(--text3);margin-bottom:8px">via ${usedModel}</div>${text.replace(/\n/g,'<br>')}`;
+      const text=data.text||'No response received';
+      box.innerHTML=`<div style="font-size:10px;color:var(--text3);margin-bottom:8px">via gemini-2.5-flash</div>${text.replace(/\n/g,'<br>')}`;
       box.style.display='block';
-      localStorage.setItem('rai_last_insight',JSON.stringify({text,usedModel,time:Date.now()}));
+      localStorage.setItem('rai_last_insight',JSON.stringify({text,time:Date.now()}));
     }
   } catch(e){
-    err.textContent='Failed to connect to Gemini. Check your API key and internet connection.';
+    err.textContent='Failed to reach server. Check your connection.';
     err.style.display='block';
   }
 
@@ -1205,7 +1149,6 @@ function refreshAnalysis(){
 
 renderTabs();renderStreak();render();
 refreshAnalysis();
-loadGeminiKey();
 loadCachedInsight();
 setInterval(render,1000);
 setInterval(checkBehindSchedule,60000);

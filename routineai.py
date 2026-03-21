@@ -1,6 +1,6 @@
 import subprocess, sys
 
-for _pkg, _imp in [('flask', 'flask'), ('pillow', 'PIL')]:
+for _pkg, _imp in [('flask', 'flask'), ('pillow', 'PIL'), ('google-genai', 'google.genai')]:
     try: __import__(_imp)
     except ImportError:
         print(f'Installing {_pkg}...')
@@ -10,8 +10,11 @@ for _pkg, _imp in [('flask', 'flask'), ('pillow', 'PIL')]:
 import os
 from pathlib import Path
 
-from flask import Flask, make_response, render_template, send_from_directory
+from flask import Flask, jsonify, make_response, render_template, request, send_from_directory
+from google import genai
 from PIL import Image
+
+MODEL = 'gemini-2.5-flash'
 
 app = Flask(__name__)
 
@@ -60,6 +63,29 @@ def generate_pwa_icons():
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/api/gemini', methods=['POST'])
+def api_gemini():
+    prompt = (request.json or {}).get('prompt', '').strip()
+    if not prompt:
+        return jsonify({'error': 'prompt is required'}), 400
+
+    key = os.environ.get('GEMINI_API_KEY', '')
+    if not key:
+        return jsonify({'error': 'GEMINI_API_KEY not configured on server'}), 503
+
+    try:
+        client = genai.Client(api_key=key)
+        resp = client.models.generate_content(model=MODEL, contents=prompt)
+        return jsonify({'text': resp.text.strip()})
+    except Exception as e:
+        msg = str(e).lower()
+        if any(x in msg for x in ('api_key', 'invalid', 'unauthorized')):
+            return jsonify({'error': 'Invalid API key on server'}), 502
+        if any(x in msg for x in ('quota', 'rate', 'resource exhausted')):
+            return jsonify({'error': 'Rate limited — try again shortly'}), 429
+        return jsonify({'error': str(e)}), 502
 
 
 @app.route('/sw.js')
