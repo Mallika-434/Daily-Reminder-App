@@ -1,6 +1,6 @@
 import subprocess, sys
 
-for _pkg, _imp in [('flask', 'flask'), ('pillow', 'PIL'), ('google-genai', 'google.genai')]:
+for _pkg, _imp in [('flask', 'flask'), ('pillow', 'PIL'), ('requests', 'requests')]:
     try: __import__(_imp)
     except ImportError:
         print(f'Installing {_pkg}...')
@@ -10,11 +10,12 @@ for _pkg, _imp in [('flask', 'flask'), ('pillow', 'PIL'), ('google-genai', 'goog
 import os
 from pathlib import Path
 
+import requests as http
+
 from flask import Flask, jsonify, make_response, render_template, request, send_from_directory
-from google import genai
 from PIL import Image
 
-MODEL = 'gemini-2.5-flash'
+GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
 app = Flask(__name__)
 
@@ -76,15 +77,19 @@ def api_gemini():
         return jsonify({'error': 'GEMINI_API_KEY not configured on server'}), 503
 
     try:
-        client = genai.Client(api_key=key)
-        resp = client.models.generate_content(model=MODEL, contents=prompt)
-        return jsonify({'text': resp.text.strip()})
+        resp = http.post(
+            GEMINI_URL,
+            params={'key': key},
+            json={'contents': [{'parts': [{'text': prompt}]}]},
+            timeout=30,
+        )
+        data = resp.json()
+        if not resp.ok:
+            msg = data.get('error', {}).get('message', resp.text)
+            return jsonify({'error': msg}), resp.status_code
+        text = data['candidates'][0]['content']['parts'][0]['text']
+        return jsonify({'text': text.strip()})
     except Exception as e:
-        msg = str(e).lower()
-        if any(x in msg for x in ('api_key', 'invalid', 'unauthorized')):
-            return jsonify({'error': 'Invalid API key on server'}), 502
-        if any(x in msg for x in ('quota', 'rate', 'resource exhausted')):
-            return jsonify({'error': 'Rate limited — try again shortly'}), 429
         return jsonify({'error': str(e)}), 502
 
 
